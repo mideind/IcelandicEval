@@ -163,6 +163,9 @@ def noun_generator() -> Iterator[NounTuple]:
                     if lemma[0].isupper():
                         # Skip proper nouns
                         continue
+                    if "-" in lemma or " " in lemma or "." in lemma:
+                        # Skip nouns with hyphens or spaces (these can occur in BÍN)
+                        continue
                     yield (lemma, gender)
 
 def adjective_generator() -> Iterator[str]:
@@ -170,8 +173,10 @@ def adjective_generator() -> Iterator[str]:
     with file("adjectives.csv", "r") as inp:
         for line in inp:
             # Yield the adjective lemma
-            if (line := line.strip()):
-                yield line
+            if (lemma := line.strip()):
+                if "-" in lemma or " " in lemma or "." in lemma:
+                    continue
+                yield lemma
 
 def process_nouns() -> None:
     """ Process noun lemmas """
@@ -258,6 +263,9 @@ def generate(count: int) -> None:
                 try:
                     # Find the plural form of the noun
                     noun_ft = b.lookup_variants(noun, gender, ("NF", "FT"))[0].bmynd
+                    # The lookup-variants function may return a hyphenated form
+                    # for composite words; we don't want that
+                    noun_ft = noun_ft.replace("-", "")
                 except IndexError:
                     # The noun probably does not exist in plural form
                     continue
