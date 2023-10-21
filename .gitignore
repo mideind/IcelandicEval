@@ -1,0 +1,102 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+.cache/
+.pytest_cache/
+.mypy_cache/
+.idea/
+.vscode/
+*.py[cod]
+*.o
+*.obj
+*.exp
+*.lib
+*.so
+*.exe
+
+# Generated data files
+data/*.jsonl
+data/adj-*.txt
+data/nouns-*.txt
+
+# Compressed data files
+*.gz
+*.zip
+*.sha256sum
+
+# Experimental Python stuff
+test.py
+*.new.py
+*.old.py
+
+# Mypy
+mypy.ini
+
+# Doc stuff
+doc/Makefile
+doc/make.bat
+doc/_build/
+
+# Various resource files
+
+# Scratch work files
+*.dawg
+*.bin
+KRISTINsnid.csv
+KRISTINsnid.old.csv
+compressed.bin
+
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+*.bak
+*.profile
+*.log
+t
+txt
+input.txt
+nohup.out
+
+# Distribution / packaging
+.Python
+env/
+bin/
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+.eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+log/
+console/
+
+# Virtual environments
+venv
+p3*/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+deploy_done.py
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
