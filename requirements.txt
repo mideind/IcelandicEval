@@ -1,0 +1,2 @@
+icegrams>=1.1.2
+reynir>=3.5.4
