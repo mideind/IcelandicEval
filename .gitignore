@@ -14,7 +14,7 @@ __pycache__/
 *.exe
 
 # Generated data files
-data/*.jsonl
+data/icelandic-inflection-*/*.jsonl
 data/adj-*.txt
 data/nouns-*.txt
 

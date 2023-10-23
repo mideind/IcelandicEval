@@ -76,11 +76,9 @@ MAX_BUCKETS = 3
 NUM_NOUN_SAMPLES = 1000
 NUM_ADJECTIVE_SAMPLES = 500
 
-DIFFICULTY: Mapping[int, str] = {
-    0: "hard",
-    1: "medium",
-    2: "easy"
-}
+DATA_PATH = Path("data")
+
+DIFFICULTY: Mapping[int, str] = {0: "hard", 1: "medium", 2: "easy"}
 
 # Instantiate the icegrams database of unigram, bigram and trigram frequencies
 ngrams = icegrams.ngrams.Ngrams()
@@ -94,19 +92,22 @@ b = islenska.Bin()
 # database. Sum up the number of occurrences and store the lemma in
 # the appropriate output bucket by frequency.
 
+
 def file(name: str, mode: str) -> IO[str]:
-    return open(Path("data") / name, mode, encoding="utf-8")
+    return open(DATA_PATH / name, mode, encoding="utf-8")
+
 
 def bucket(freq: int) -> int:
-    """ Return the bucket number for a given frequency, using powers of 10 """
+    """Return the bucket number for a given frequency, using powers of 10"""
     if freq <= 1:
         return 0
     # We only need buckets 0 through MAX_BUCKETS-1
     return min(MAX_BUCKETS - 1, int(math.log10(freq)))
 
+
 class Buckets:
 
-    """ A collection of frequency buckets for output lemmas """
+    """A collection of frequency buckets for output lemmas"""
 
     def __init__(self, name: str) -> None:
         self.name = name
@@ -114,14 +115,14 @@ class Buckets:
         self.lemmas: Dict[int, List[str]] = defaultdict(list)
 
     def add(self, lemma: str, freq: int) -> None:
-        """ Add a lemma and its frequency to the appropriate bucket """
+        """Add a lemma and its frequency to the appropriate bucket"""
         # Find the bucket number
         b = bucket(freq)
         self.buckets[b].add(lemma)
 
     def write(self, limit: int) -> None:
-        """ Sample the given number of lemmas from the buckets
-            and write the samples to files, one file per bucket """
+        """Sample the given number of lemmas from the buckets
+        and write the samples to files, one file per bucket"""
         for bucket, lemmas in self.buckets.items():
             if len(lemmas) < 1:
                 continue
@@ -132,31 +133,32 @@ class Buckets:
                     out.write(f"{lemma}\n")
 
     def read(self, bucket: int) -> None:
-        """ Read the contents of a bucket back from its file """
+        """Read the contents of a bucket back from its file"""
         try:
             bu = self.lemmas[bucket]
             with file(f"{self.name}-{bucket}.txt", "r") as inp:
                 for line in inp:
-                    if (line := line.strip()):
+                    if line := line.strip():
                         bu.append(line)
         except FileNotFoundError:
             # No lemmas found for this bucket
             assert len(self.lemmas[bucket]) == 0
 
     def choose(self, bucket: int) -> str:
-        """ Choose a lemma at random from the specified bucket """
+        """Choose a lemma at random from the specified bucket"""
         if bucket not in self.lemmas:
             # Read the bucket from its file
             self.read(bucket)
         # Return a random lemma from the bucket
         return random.choice(self.lemmas[bucket])
 
+
 def noun_generator() -> Iterator[NounTuple]:
-    """ Return a generator to loop through the noun input file """
+    """Return a generator to loop through the noun input file"""
     with file("nouns.csv", "r") as inp:
         for line in inp:
             # Yield the noun lemma and the gender (kk, kvk, hk)
-            if (line := line.strip()):
+            if line := line.strip():
                 n = line.split(",")
                 if len(n) == 2:
                     lemma, gender = n[0], n[1]
@@ -168,18 +170,20 @@ def noun_generator() -> Iterator[NounTuple]:
                         continue
                     yield (lemma, gender)
 
+
 def adjective_generator() -> Iterator[str]:
-    """ Return a generator to loop through the adjective input file """
+    """Return a generator to loop through the adjective input file"""
     with file("adjectives.csv", "r") as inp:
         for line in inp:
             # Yield the adjective lemma
-            if (lemma := line.strip()):
+            if lemma := line.strip():
                 if "-" in lemma or " " in lemma or "." in lemma:
                     continue
                 yield lemma
 
+
 def process_nouns() -> None:
-    """ Process noun lemmas """
+    """Process noun lemmas"""
     # Create the output buckets
     noun_buckets = Buckets("nouns")
     # Loop over the lemmas
@@ -192,7 +196,9 @@ def process_nouns() -> None:
 
         _, forms = b.lookup(lemma)
         w = set(f.bmynd for f in forms if f.ord == lemma and f.ofl == gender)
-        if any(any(e.ofl != gender or e.ord != lemma for e in b.lookup(wf)[1]) for wf in w):
+        if any(
+            any(e.ofl != gender or e.ord != lemma for e in b.lookup(wf)[1]) for wf in w
+        ):
             # Skip lemmas that are ambiguous, i.e. whose word forms can
             # belong to other lemmas
             continue
@@ -206,8 +212,9 @@ def process_nouns() -> None:
     # Done: write the result buckets to files
     noun_buckets.write(NUM_NOUN_SAMPLES)
 
+
 def process_adjectives() -> None:
-    """ Process adjective lemmas """
+    """Process adjective lemmas"""
     adj_buckets = Buckets("adj")
     # Loop over the lemmas
     for lemma in adjective_generator():
@@ -225,7 +232,9 @@ def process_adjectives() -> None:
         _, forms = b.lookup(lemma)
         w = set(f.bmynd for f in forms if f.ord == lemma and f.ofl == "lo")
 
-        if any(any(e.ofl != "lo" or e.ord != lemma for e in b.lookup(wf)[1]) for wf in w):
+        if any(
+            any(e.ofl != "lo" or e.ord != lemma for e in b.lookup(wf)[1]) for wf in w
+        ):
             # Skip lemmas that are ambiguous, i.e. whose word forms can
             # belong to other lemmas
             continue
@@ -239,8 +248,9 @@ def process_adjectives() -> None:
     # Done: write the result buckets to files
     adj_buckets.write(NUM_ADJECTIVE_SAMPLES)
 
+
 def generate(count: int) -> None:
-    """ Generate JSONL output files """
+    """Generate JSONL output files"""
     # Generate three output files, with varying degree of difficulty
     # from buckets 0, 1 and 2, by combining an adjective from bucket N
     # with a noun from bucket N.
@@ -250,7 +260,9 @@ def generate(count: int) -> None:
     for bucket in range(MAX_BUCKETS):
         # Read the adjective and noun buckets from file
         # Open the output file
-        with file(f"icelandic-inflection-{DIFFICULTY[bucket]}.jsonl", "w") as out:
+        outputPath = DATA_PATH / f"icelandic-inflection-{DIFFICULTY[bucket]}"
+        outputPath.mkdir(exist_ok=True)
+        with open(outputPath / "samples.jsonl", "w", encoding="utf-8") as out:
             c = 0
             while c < count:
                 # Choose an adjective and a noun from the bucket
@@ -258,8 +270,12 @@ def generate(count: int) -> None:
                 noun = noun_buckets.choose(bucket)
                 gender = b.lookup(noun)[1][0].ofl
                 # Find the base strong form of the adjective for the correct gender
-                adj = b.lookup_variants(adj_lemma, "lo", (gender.upper(), "FSB", "NF", "ET"))[0].bmynd
-                adj_ft = b.lookup_variants(adj_lemma, "lo", (gender.upper(), "FSB", "NF", "FT"))[0].bmynd
+                adj = b.lookup_variants(
+                    adj_lemma, "lo", (gender.upper(), "FSB", "NF", "ET")
+                )[0].bmynd
+                adj_ft = b.lookup_variants(
+                    adj_lemma, "lo", (gender.upper(), "FSB", "NF", "FT")
+                )[0].bmynd
                 try:
                     # Find the plural form of the noun
                     noun_ft = b.lookup_variants(noun, gender, ("NF", "FT"))[0].bmynd
@@ -276,40 +292,43 @@ def generate(count: int) -> None:
                 # Create the complete inflection JSON record
                 completion = {
                     "et": {  # Singular
-                        "nf": f"{nl:nf}",    # Nominative
-                        "þf": f"{nl:þf}",    # Accusative
+                        "nf": f"{nl:nf}",  # Nominative
+                        "þf": f"{nl:þf}",  # Accusative
                         "þgf": f"{nl:þgf}",  # Dative
-                        "ef": f"{nl:ef}"     # Genitive
+                        "ef": f"{nl:ef}",  # Genitive
                     },
                     "ft": {  # Plural
                         "nf": f"{nl_ft:nf}",
                         "þf": f"{nl_ft:þf}",
                         "þgf": f"{nl_ft:þgf}",
-                        "ef": f"{nl_ft:ef}"
-                    }
+                        "ef": f"{nl_ft:ef}",
+                    },
                 }
                 example = {
                     "input": [
                         {
                             "role": "system",
                             # "You are an expert in Icelandic grammar."
-                            "content": "Þú ert sérfræðingur í íslenskri málfræði."
+                            "content": "Þú ert sérfræðingur í íslenskri málfræði.",
                         },
                         {
                             "role": "user",
                             "content": (
                                 # "How does the noun phrase \"<adj> <noun>\" inflect in all cases (nf, þf, þgf, ef), "
                                 # "singular (et) and plural (ft), without the definite article? "
-                                # "Answer in JSON format only."
-                                f"Hvernig fallbeygist nafnliðurinn \"{adj} {noun}\" í öllum föllum (nf, þf, þgf, ef), "
-                                "eintölu (et) og fleirtölu (ft), án greinis? Svaraðu í JSON formi eingöngu."
-                            )
-                        }
+                                # "Answer in *JSON format only* and identify numbers and cases with the abbreviations "
+                                # "et, ft, nf, þf, þgf, ef."
+                                f'Hvernig fallbeygist nafnliðurinn "{adj} {noun}" í öllum föllum (nf, þf, þgf, ef), '
+                                "eintölu (et) og fleirtölu (ft), án greinis? Svaraðu í *JSON formi eingöngu* og "
+                                "auðkenndu tölur og föll með skammstöfunum et, ft, nf, þf, þgf, ef."
+                            ),
+                        },
                     ],
-                    "ideal": jdump(completion)
+                    "ideal": jdump(completion),
                 }
-                out.write(f'{jdump(example)}\n')
+                out.write(f"{jdump(example)}\n")
                 c += 1
+
 
 if __name__ == "__main__":
     # Pick up command line arguments:
@@ -317,15 +336,24 @@ if __name__ == "__main__":
     # --adjectives: process only adjectives
     # --all (default): process both nouns and adjectives
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--nouns", action="store_true")
     parser.add_argument("--adjectives", action="store_true")
-    parser.add_argument("--generate", action="store_true")
+    # Allow a number with the generate argument to specify the number of samples
+    parser.add_argument(
+        "--generate",
+        type=int,
+        nargs="?",
+        const=10,
+        metavar="N",
+        help="generate JSONL output files with N samples per bucket (default: 10)",
+    )
     args = parser.parse_args()
 
     if args.generate:
         # Generate JSONL output files
-        generate(10)  # 10 samples per bucket
+        generate(args.generate)
     elif args.nouns:
         # Nouns only
         process_nouns()
@@ -336,4 +364,3 @@ if __name__ == "__main__":
         # Process all
         process_nouns()
         process_adjectives()
-
